@@ -10,6 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/alfa-slab-one": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/oswald": "^5.2.8",
+    "@fontsource/pacifico": "^5.2.7",
+    "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/vite": "^4.3.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

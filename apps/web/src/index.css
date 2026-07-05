@@ -1,1 +1,22 @@
+/* Oswald — regular e bold */
+@import "@fontsource/oswald/400.css";
+@import "@fontsource/oswald/700.css";
+
+/* Alfa Slab One — só existe em 400 */
+@import "@fontsource/alfa-slab-one/400.css";
+
+/* Pacifico — só existe em 400 */
+@import "@fontsource/pacifico/400.css";
+
+/* Inter — regular e bold */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/700.css";
+
 @import "tailwindcss";
+
+@theme {
+  --font-alfa: "Alfa Slab One", serif;
+  --font-pacifico: "Pacifico", cursive;
+  --font-oswald: "Oswald", sans-serif;
+  --font-inter: "Inter", sans-serif;
+}

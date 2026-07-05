@@ -4,7 +4,7 @@ import Cardapio from "./routes/cardapio/Cardapio";
 // Layout público (cardápio)
 const SiteLayout = () => {
   return (
-    <div className="min-h-screen bg-[#0C0A09] text-[#F3E9D2]">
+    <div className="min-h-screen bg-[#171210]">
       <Outlet />
     </div>
   );
