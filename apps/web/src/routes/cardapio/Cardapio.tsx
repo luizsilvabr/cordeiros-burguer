@@ -1,11 +1,15 @@
 import {
+  BasketIcon,
   InstagramLogoIcon,
   PhoneIcon,
   ShoppingCartIcon,
 } from "@phosphor-icons/react";
-// import CarrinhoDrawer from "../../components/carrinho/CarrinhoDrawer";
+import { useCartStore } from "../../stores/cartStore";
+import CarrinhoDrawer from "../../components/carrinho/CarrinhoDrawer";
 
 export default function Cardapio() {
+  const { toggleCart, getTotalQuantity } = useCartStore();
+
   return (
     <>
       {/* HEADER */}
@@ -13,8 +17,16 @@ export default function Cardapio() {
         <div>
           <img src="./images/logo.png" alt="Logo" />
         </div>
-        <div className="bg-[#FBE9BC] rounded-[5px] p-1">
+        <div
+          className="bg-[#FBE9BC] rounded-[5px] p-1 cursor-pointer"
+          onClick={toggleCart}
+        >
           <ShoppingCartIcon size={29} />
+          {getTotalQuantity() > 0 && (
+            <span className="absolute -top-2 -right-2 bg-[#C81D25] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              {getTotalQuantity()}
+            </span>
+          )}
         </div>
       </div>
 
@@ -60,9 +72,15 @@ export default function Cardapio() {
                   </p>
                 </div>
                 <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px]">
+                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
                     R$ 32,50
                   </span>
+                  <button>
+                    <BasketIcon
+                      className="cursor-pointer text-[#F3E9D2]"
+                      size={29}
+                    />
+                  </button>
                 </div>
               </div>
             </div>
@@ -86,9 +104,15 @@ export default function Cardapio() {
                   </p>
                 </div>
                 <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px]">
+                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
                     R$ 32,50
                   </span>
+                  <button>
+                    <BasketIcon
+                      className="cursor-pointer text-[#F3E9D2]"
+                      size={29}
+                    />
+                  </button>
                 </div>
               </div>
             </div>
@@ -112,9 +136,15 @@ export default function Cardapio() {
                   </p>
                 </div>
                 <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px]">
+                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
                     R$ 32,50
                   </span>
+                  <button>
+                    <BasketIcon
+                      className="cursor-pointer text-[#F3E9D2]"
+                      size={29}
+                    />
+                  </button>
                 </div>
               </div>
             </div>
@@ -138,9 +168,15 @@ export default function Cardapio() {
                   </p>
                 </div>
                 <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px]">
+                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
                     R$ 32,50
                   </span>
+                  <button>
+                    <BasketIcon
+                      className="cursor-pointer text-[#F3E9D2]"
+                      size={29}
+                    />
+                  </button>
                 </div>
               </div>
             </div>
@@ -164,9 +200,15 @@ export default function Cardapio() {
                   </p>
                 </div>
                 <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px]">
+                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
                     R$ 32,50
                   </span>
+                  <button>
+                    <BasketIcon
+                      className="cursor-pointer text-[#F3E9D2]"
+                      size={29}
+                    />
+                  </button>
                 </div>
               </div>
             </div>
@@ -190,9 +232,15 @@ export default function Cardapio() {
                   </p>
                 </div>
                 <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px]">
+                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
                     R$ 32,50
                   </span>
+                  <button>
+                    <BasketIcon
+                      className="cursor-pointer text-[#F3E9D2]"
+                      size={29}
+                    />
+                  </button>
                 </div>
               </div>
             </div>
@@ -216,7 +264,7 @@ export default function Cardapio() {
         </div>
       </div>
 
-      {/* <CarrinhoDrawer /> */}
+      <CarrinhoDrawer />
     </>
   );
 }
