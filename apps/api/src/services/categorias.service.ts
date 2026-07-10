@@ -1,4 +1,4 @@
-import { ConflictError, NotFoundError } from "../errors/AppError.js";
+import { AppError, ConflictError, NotFoundError } from "../errors/AppError.js";
 import { prisma } from "../lib/prisma.js";
 import type { CreateCategoryInput } from "../schemas/categorias.schema.js";
 
@@ -58,5 +58,20 @@ export async function deactivateCategory(id: string) {
   return prisma.category.update({
     where: { id },
     data: { isActive: false },
+  });
+}
+
+export async function reactivateCategory(id: string) {
+  const category = await prisma.category.findUnique({
+    where: { id },
+  });
+
+  if (!category) {
+    throw new NotFoundError("Categoria não encontrada");
+  }
+
+  return prisma.category.update({
+    where: { id },
+    data: { isActive: true },
   });
 }

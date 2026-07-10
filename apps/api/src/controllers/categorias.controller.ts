@@ -5,6 +5,7 @@ import {
   createCategory,
   updateCategory,
   deactivateCategory,
+  reactivateCategory,
 } from "../services/categorias.service.js";
 import { createCategorySchema } from "../schemas/categorias.schema.js";
 import { getIdParam } from "../utils/getIdParam.js";
@@ -41,4 +42,13 @@ export async function deactivateCategoryController(
 
   const category = await deactivateCategory(id);
   return res.status(200).json(category);
+}
+
+export async function reactivateCategoryController(
+  req: Request,
+  res: Response,
+) {
+  const id = getIdParam(req.params.id, "Id da categoria é obrigatório");
+  const category = await reactivateCategory(id);
+  res.status(200).json(category);
 }

@@ -6,6 +6,7 @@ import {
   createCategoryController,
   updateCategoryController,
   deactivateCategoryController,
+  reactivateCategoryController,
 } from "../controllers/categorias.controller.js";
 import { authGuard } from "../middlewares/authGuard.js";
 
@@ -26,3 +27,6 @@ categoriasRoutes.delete(
   authGuard,
   asyncHandler(deactivateCategoryController),
 );
+
+categoriasRoutes.patch("/:id/reativar", authGuard, asyncHandler(reactivateCategoryController));
+
