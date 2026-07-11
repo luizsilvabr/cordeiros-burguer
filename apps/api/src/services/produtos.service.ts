@@ -6,21 +6,36 @@ export async function getProducts() {
   return prisma.product.findMany({
     where: { isActive: true },
     orderBy: { name: "asc" },
-    include: { optionGroups: { include: { items: true } } },
+    include: {
+      optionGroups: {
+        orderBy: { name: "asc" },
+        include: { items: { orderBy: { name: "asc" } } },
+      },
+    },
   });
 }
 
 export async function getAllProducts() {
   return prisma.product.findMany({
     orderBy: { name: "asc" },
-    include: { optionGroups: { include: { items: true } } },
+    include: {
+      optionGroups: {
+        orderBy: { name: "asc" },
+        include: { items: { orderBy: { name: "asc" } } },
+      },
+    },
   });
 }
 
 export async function getProductById(id: string) {
   const product = await prisma.product.findUnique({
     where: { id },
-    include: { optionGroups: { include: { items: true } } },
+    include: {
+      optionGroups: {
+        orderBy: { name: "asc" },
+        include: { items: { orderBy: { name: "asc" } } },
+      },
+    },
   });
 
   if (!product) {
