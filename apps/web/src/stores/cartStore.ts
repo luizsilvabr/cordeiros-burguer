@@ -1,6 +1,6 @@
-// apps/web/src/stores/cartStore.ts
 import { create } from "zustand";
-import type { CartItem } from "../types";
+import { persist } from "zustand/middleware";
+import type { CartItem, SelectedOption } from "../types";
 
 interface CartState {
   items: CartItem[];
@@ -21,62 +21,102 @@ interface CartState {
   getTotalQuantity: () => number;
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
-  items: [],
-  isOpen: false,
+function areOptionsEqual(a: SelectedOption[], b: SelectedOption[]): boolean {
+  if (a.length !== b.length) return false;
+  const idsA = a.map((opt) => opt.itemId).sort();
+  const idsB = b.map((opt) => opt.itemId).sort();
+  return idsA.every((id, index) => id === idsB[index]);
+}
 
-  addItem: (item) => {
-    const newItem: CartItem = {
-      ...item,
-      id: crypto.randomUUID(),
-    };
-    set((state) => ({ items: [...state.items, newItem] }));
-  },
+function isSameCartItem(
+  candidate: Omit<CartItem, "id">,
+  existing: CartItem,
+): boolean {
+  return (
+    candidate.productId === existing.productId &&
+    (candidate.observation ?? "") === (existing.observation ?? "") &&
+    areOptionsEqual(candidate.selectedOptions, existing.selectedOptions)
+  );
+}
 
-  removeItem: (cartItemId) => {
-    set((state) => ({
-      items: state.items.filter((i) => i.id !== cartItemId),
-    }));
-  },
+export const useCartStore = create<CartState>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      isOpen: false,
 
-  incrementItem: (cartItemId) => {
-    set((state) => ({
-      items: state.items.map((i) =>
-        i.id === cartItemId ? { ...i, quantity: i.quantity + 1 } : i,
-      ),
-    }));
-  },
+      addItem: (item) => {
+        set((state) => {
+          const existing = state.items.find((i) => isSameCartItem(item, i));
 
-  decrementItem: (cartItemId) => {
-    set((state) => ({
-      items: state.items
-        .map((i) =>
-          i.id === cartItemId ? { ...i, quantity: i.quantity - 1 } : i,
-        )
-        .filter((i) => i.quantity > 0), // se chegar a 0, remove
-    }));
-  },
+          if (existing) {
+            return {
+              items: state.items.map((i) =>
+                i.id === existing.id
+                  ? { ...i, quantity: i.quantity + item.quantity }
+                  : i,
+              ),
+            };
+          }
 
-  clearCart: () => set({ items: [] }),
+          const newItem: CartItem = {
+            ...item,
+            id: crypto.randomUUID(),
+          };
+          return { items: [...state.items, newItem] };
+        });
+      },
 
-  toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
-  openCart: () => set({ isOpen: true }),
-  closeCart: () => set({ isOpen: false }),
+      removeItem: (cartItemId) => {
+        set((state) => ({
+          items: state.items.filter((i) => i.id !== cartItemId),
+        }));
+      },
 
-  getItemPrice: (item) => {
-    const optionsTotal = item.selectedOptions.reduce(
-      (sum, opt) => sum + opt.extraPrice,
-      0,
-    );
-    return (item.basePrice + optionsTotal) * item.quantity;
-  },
+      incrementItem: (cartItemId) => {
+        set((state) => ({
+          items: state.items.map((i) =>
+            i.id === cartItemId ? { ...i, quantity: i.quantity + 1 } : i,
+          ),
+        }));
+      },
 
-  getSubtotal: () => {
-    const { items, getItemPrice } = get();
-    return items.reduce((sum, item) => sum + getItemPrice(item), 0);
-  },
+      decrementItem: (cartItemId) => {
+        set((state) => ({
+          items: state.items
+            .map((i) =>
+              i.id === cartItemId ? { ...i, quantity: i.quantity - 1 } : i,
+            )
+            .filter((i) => i.quantity > 0),
+        }));
+      },
 
-  getTotalQuantity: () => {
-    return get().items.reduce((sum, item) => sum + item.quantity, 0);
-  },
-}));
+      clearCart: () => set({ items: [] }),
+
+      toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
+      openCart: () => set({ isOpen: true }),
+      closeCart: () => set({ isOpen: false }),
+
+      getItemPrice: (item) => {
+        const optionsTotal = item.selectedOptions.reduce(
+          (sum, opt) => sum + opt.extraPrice,
+          0,
+        );
+        return (item.basePrice + optionsTotal) * item.quantity;
+      },
+
+      getSubtotal: () => {
+        const { items, getItemPrice } = get();
+        return items.reduce((sum, item) => sum + getItemPrice(item), 0);
+      },
+
+      getTotalQuantity: () => {
+        return get().items.reduce((sum, item) => sum + item.quantity, 0);
+      },
+    }),
+    {
+      name: "cordeiros-burguer-cart",
+      partialize: (state) => ({ items: state.items }),
+    },
+  ),
+);

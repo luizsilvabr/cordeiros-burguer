@@ -1,5 +1,3 @@
-// apps/web/src/types/index.ts
-
 export interface ProductOptionItem {
   id: string;
   name: string;
@@ -32,7 +30,6 @@ export interface Category {
   isActive: boolean;
 }
 
-// Adicional/opção já escolhida dentro de um item do carrinho
 export interface SelectedOption {
   groupId: string;
   groupName: string;
@@ -42,7 +39,7 @@ export interface SelectedOption {
 }
 
 export interface CartItem {
-  id: string; // id único do item no carrinho (não é o id do produto — permite dois "smash triplo" com opções diferentes)
+  id: string;
   productId: string;
   name: string;
   imageUrl: string;

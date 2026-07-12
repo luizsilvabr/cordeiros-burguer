@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   BasketIcon,
   InstagramLogoIcon,
@@ -6,9 +7,110 @@ import {
 } from "@phosphor-icons/react";
 import { useCartStore } from "../../stores/cartStore";
 import CarrinhoDrawer from "../../components/carrinho/CarrinhoDrawer";
+import ProdutoModal from "../../components/produto/ProdutoModal";
+import { http } from "../../lib/http";
+import type { Category, Product } from "../../types";
+
+// Categoria "Todos" não existe no banco — é só uma opção visual fixa,
+// sempre primeira e pré-selecionada, que mostra o cardápio inteiro sem filtro.
+const ALL_CATEGORY_ID = "todos";
+const ALL_CATEGORY: Category = {
+  id: ALL_CATEGORY_ID,
+  name: "Todos",
+  order: -1, // sempre primeiro, antes de qualquer order vindo da API
+  isActive: true,
+};
 
 export default function Cardapio() {
   const { toggleCart, getTotalQuantity } = useCartStore();
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] =
+    useState<string>(ALL_CATEGORY_ID);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  // fade no grid ao trocar categoria: só troca o CONTEÚDO exibido
+  // (displayedProducts) depois que o fade-out visual já rodou por completo —
+  // por isso duration precisa bater com o duration-200 da classe Tailwind
+  const FADE_MS = 200;
+  const [displayedProducts, setDisplayedProducts] = useState<Product[]>([]);
+  const [displayedCategory, setDisplayedCategory] = useState<Category | null>(
+    null,
+  );
+  const [isGridVisible, setIsGridVisible] = useState(true);
+
+  useEffect(() => {
+    setIsGridVisible(false);
+    const timeout = setTimeout(() => {
+      setDisplayedProducts(filteredProducts);
+      setDisplayedCategory(selectedCategory ?? null);
+      setIsGridVisible(true);
+    }, FADE_MS);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategoryId, products]);
+
+  useEffect(() => {
+    async function loadCardapio() {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const [categoriasData, produtosData] = await Promise.all([
+          http.get<Category[]>("/categorias"),
+          http.get<Product[]>("/produtos"),
+        ]);
+
+        setCategories(categoriasData);
+        setProducts(produtosData.map(normalizeProduct));
+        // selectedCategoryId já começa em ALL_CATEGORY_ID — não precisa
+        // mexer nele aqui, "Todos" continua selecionado até o usuário clicar
+      } catch {
+        setError("Não foi possível carregar o cardápio. Tente novamente.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadCardapio();
+  }, []);
+
+  // "Todos" sempre primeiro, seguido das categorias reais vindas da API
+  const categoriesWithAll: Category[] = [ALL_CATEGORY, ...categories];
+
+  const selectedCategory = categoriesWithAll.find(
+    (c) => c.id === selectedCategoryId,
+  );
+
+  // mapa categoryId -> order, pra não precisar de um .find() por produto
+  const categoryOrderById = new Map(categories.map((c) => [c.id, c.order]));
+
+  const filteredProducts =
+    selectedCategoryId === ALL_CATEGORY_ID
+      ? [...products].sort((a, b) => {
+          const orderA = categoryOrderById.get(a.categoryId) ?? 0;
+          const orderB = categoryOrderById.get(b.categoryId) ?? 0;
+          return orderA - orderB; // dentro da mesma order, mantém a ordem alfabética que já veio da API
+        })
+      : products.filter((p) => p.categoryId === selectedCategoryId);
+
+  function normalizeProduct(produto: Product): Product {
+    return {
+      ...produto,
+      price: Number(produto.price),
+      optionGroups: produto.optionGroups.map((group) => ({
+        ...group,
+        items: group.items.map((item) => ({
+          ...item,
+          extraPrice: Number(item.extraPrice),
+        })),
+      })),
+    };
+  }
 
   return (
     <>
@@ -23,7 +125,7 @@ export default function Cardapio() {
         >
           <ShoppingCartIcon size={29} />
           {getTotalQuantity() > 0 && (
-            <span className="absolute -top-2 -right-2 bg-[#C81D25] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+            <span className="absolute top-[33px] right-[81px] bg-[#C81D25] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
               {getTotalQuantity()}
             </span>
           )}
@@ -32,219 +134,89 @@ export default function Cardapio() {
 
       {/* MENU */}
       <div className="bg-[#171210] min-h-screen w-full px-22 mx-auto mt-10">
+        {error && <p className="text-[#C81D25] font-inter mb-5">{error}</p>}
+
         {/* CATEGORIAS */}
         <div className="flex justify-start items-center font-oswald">
-          <button className="bg-[#FBE9BC] rounded-[5px] w-[130px] h-[42px] text-[#171210] border-1 border-[#171210] font-bold px-7 mr-5">
-            BURGUERS
-          </button>
-          <button className="bg-[#171210] rounded-[5px] w-[130px] h-[42px] text-[#FBE9BC] border-1 border-[#FBE9BC] font-bold mr-5">
-            PORÇÕES
-          </button>
-          <button className="bg-[#171210] rounded-[5px] w-[130px] h-[42px] text-[#FBE9BC] border-1 border-[#FBE9BC] font-bold mr-5">
-            BEBIDAS
-          </button>
-          <button className="bg-[#171210] rounded-[5px] w-[130px] h-[42px] text-[#FBE9BC] border-1 border-[#FBE9BC] font-bold mr-5">
-            SOBREMESAS
-          </button>
+          {categoriesWithAll.map((categoria) => {
+            const isSelected = categoria.id === selectedCategoryId;
+            return (
+              <button
+                key={categoria.id}
+                onClick={() => setSelectedCategoryId(categoria.id)}
+                className={`cursor-pointer outline-none transition-colors rounded-[5px] w-[130px] h-[42px] border-1 font-bold mr-5 ${
+                  isSelected
+                    ? "bg-[#FBE9BC] text-[#171210] border-[#171210]"
+                    : "bg-[#171210] text-[#FBE9BC] border-[#FBE9BC] hover:bg-[#FBE9BC] hover:text-[#171210] hover:border-[#171210]"
+                }`}
+              >
+                {categoria.name.toUpperCase()}
+              </button>
+            );
+          })}
         </div>
 
         {/* ITENS */}
         <div className="my-10">
-          <h2 className="text-[#F0C264] font-alfa text-2xl">BURGUER</h2>
+          {isLoading ? (
+            <p className="text-[#C4B49A] font-inter mt-5">
+              Carregando cardápio...
+            </p>
+          ) : (
+            <div
+              className={`transition-opacity duration-200 ${
+                isGridVisible ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              {displayedCategory && (
+                <h2 className="text-[#F0C264] font-alfa text-2xl">
+                  {displayedCategory.name.toUpperCase()}
+                </h2>
+              )}
 
-          <div className="grid grid-cols-2 gap-x-10 gap-y-8 mt-5">
-            {/* ITEM 1 */}
-            <div className="flex gap-4">
-              <img
-                src="./images/burguer1.png"
-                alt="Burguer"
-                className="w-[300px] h-[240px] object-cover rounded-[5px]"
-              />
-              <div className="flex flex-col justify-between">
-                <div>
-                  <h3 className="text-[#F3E9D2] font-alfa text-[20px]">
-                    SMASH TRIPLO
-                  </h3>
-                  <p className="text-[#C4B49A] text-[17px] mt-1 font-inter">
-                    Três finas e crostantes carnes amassadas na chapa, com
-                    queijo cheddar, cebola roxa e molho especial no pão de
-                    batata.
+              <div className="grid grid-cols-2 gap-x-10 gap-y-8 mt-5">
+                {displayedProducts.length === 0 ? (
+                  <p className="col-span-2 text-center text-[#C4B49A] font-inter text-[17px] mt-10">
+                    Nenhum produto encontrado nessa categoria.
                   </p>
-                </div>
-                <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
-                    R$ 32,50
-                  </span>
-                  <button>
-                    <BasketIcon
-                      className="cursor-pointer text-[#F3E9D2]"
-                      size={29}
-                    />
-                  </button>
-                </div>
+                ) : (
+                  displayedProducts.map((produto) => (
+                    <div key={produto.id} className="flex gap-4">
+                      <img
+                        src={produto.imageUrl}
+                        alt={produto.name}
+                        className="w-[300px] h-[240px] object-cover rounded-[5px]"
+                      />
+                      <div className="flex flex-col justify-between w-full">
+                        <div>
+                          <h3 className="text-[#F3E9D2] font-alfa text-[20px]">
+                            {produto.name.toUpperCase()}
+                          </h3>
+                          <p className="text-[#C4B49A] text-[17px] mt-1 font-inter">
+                            {produto.description}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-end">
+                          <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
+                            {produto.price.toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            })}
+                          </span>
+                          <button onClick={() => setSelectedProduct(produto)}>
+                            <BasketIcon
+                              className="cursor-pointer text-[#F3E9D2]"
+                              size={29}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
-
-            {/* ITEM 2 */}
-            <div className="flex gap-4">
-              <img
-                src="./images/burguer2.png"
-                alt="Burguer"
-                className="w-[300px] h-[240px] object-cover rounded-[5px]"
-              />
-              <div className="flex flex-col justify-between">
-                <div>
-                  <h3 className="text-[#F3E9D2] font-alfa text-[20px]">
-                    DUPLO DA CASA
-                  </h3>
-                  <p className="text-[#C4B49A] text-[17px] mt-1 font-inter">
-                    Três finas e crostantes carnes amassadas na chapa, com
-                    queijo cheddar, cebola roxa e molho especial no pão de
-                    batata.
-                  </p>
-                </div>
-                <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
-                    R$ 32,50
-                  </span>
-                  <button>
-                    <BasketIcon
-                      className="cursor-pointer text-[#F3E9D2]"
-                      size={29}
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* ITEM 3 */}
-            <div className="flex gap-4">
-              <img
-                src="./images/burguer1.png"
-                alt="Burguer"
-                className="w-[300px] h-[240px] object-cover rounded-[5px]"
-              />
-              <div className="flex flex-col justify-between">
-                <div>
-                  <h3 className="text-[#F3E9D2] font-alfa text-[20px]">
-                    SMASH TRIPLO
-                  </h3>
-                  <p className="text-[#C4B49A] text-[17px] mt-1 font-inter">
-                    Três finas e crostantes carnes amassadas na chapa, com
-                    queijo cheddar, cebola roxa e molho especial no pão de
-                    batata.
-                  </p>
-                </div>
-                <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
-                    R$ 32,50
-                  </span>
-                  <button>
-                    <BasketIcon
-                      className="cursor-pointer text-[#F3E9D2]"
-                      size={29}
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* ITEM 4 */}
-            <div className="flex gap-4">
-              <img
-                src="./images/burguer2.png"
-                alt="Burguer"
-                className="w-[300px] h-[240px] object-cover rounded-[5px]"
-              />
-              <div className="flex flex-col justify-between">
-                <div>
-                  <h3 className="text-[#F3E9D2] font-alfa text-[20px]">
-                    DUPLO DA CASA
-                  </h3>
-                  <p className="text-[#C4B49A] text-[17px] mt-1 font-inter">
-                    Três finas e crostantes carnes amassadas na chapa, com
-                    queijo cheddar, cebola roxa e molho especial no pão de
-                    batata.
-                  </p>
-                </div>
-                <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
-                    R$ 32,50
-                  </span>
-                  <button>
-                    <BasketIcon
-                      className="cursor-pointer text-[#F3E9D2]"
-                      size={29}
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* ITEM 5 */}
-            <div className="flex gap-4">
-              <img
-                src="./images/burguer1.png"
-                alt="Burguer"
-                className="w-[300px] h-[240px] object-cover rounded-[5px]"
-              />
-              <div className="flex flex-col justify-between">
-                <div>
-                  <h3 className="text-[#F3E9D2] font-alfa text-[20px]">
-                    SMASH TRIPLO
-                  </h3>
-                  <p className="text-[#C4B49A] text-[17px] mt-1 font-inter">
-                    Três finas e crostantes carnes amassadas na chapa, com
-                    queijo cheddar, cebola roxa e molho especial no pão de
-                    batata.
-                  </p>
-                </div>
-                <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
-                    R$ 32,50
-                  </span>
-                  <button>
-                    <BasketIcon
-                      className="cursor-pointer text-[#F3E9D2]"
-                      size={29}
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* ITEM 6 */}
-            <div className="flex gap-4">
-              <img
-                src="./images/burguer2.png"
-                alt="Burguer"
-                className="w-[300px] h-[240px] object-cover rounded-[5px]"
-              />
-              <div className="flex flex-col justify-between">
-                <div>
-                  <h3 className="text-[#F3E9D2] font-alfa text-[20px]">
-                    DUPLO DA CASA
-                  </h3>
-                  <p className="text-[#C4B49A] text-[17px] mt-1 font-inter">
-                    Três finas e crostantes carnes amassadas na chapa, com
-                    queijo cheddar, cebola roxa e molho especial no pão de
-                    batata.
-                  </p>
-                </div>
-                <div className="flex items-center justify-end">
-                  <span className="text-[#E8A93D] font-medium font-inter text-[17px] mr-5">
-                    R$ 32,50
-                  </span>
-                  <button>
-                    <BasketIcon
-                      className="cursor-pointer text-[#F3E9D2]"
-                      size={29}
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -265,6 +237,14 @@ export default function Cardapio() {
       </div>
 
       <CarrinhoDrawer />
+
+      {selectedProduct && (
+        <ProdutoModal
+          product={selectedProduct}
+          isOpen={selectedProduct !== null}
+          onClose={() => setSelectedProduct(null)}
+        />
+      )}
     </>
   );
 }

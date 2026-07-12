@@ -5,13 +5,13 @@ import type { CreateCategoryInput } from "../schemas/categorias.schema.js";
 export async function getCategories() {
   return prisma.category.findMany({
     where: { isActive: true },
-    orderBy: { name: "asc" },
+    orderBy: [{ order: "asc" }, { name: "asc" }],
   });
 }
 
 export async function getAllCategories() {
   return prisma.category.findMany({
-    orderBy: { name: "asc" },
+    orderBy: [{ order: "asc" }, { name: "asc" }],
   });
 }
 
@@ -44,7 +44,10 @@ export async function updateCategory(id: string, data: CreateCategoryInput) {
 
   return prisma.category.update({
     where: { id },
-    data: { name: data.name },
+    data: {
+      name: data.name,
+      ...(data.order !== undefined && { order: data.order }),
+    },
   });
 }
 
